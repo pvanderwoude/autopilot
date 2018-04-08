@@ -2,7 +2,7 @@
 .SYNOPSIS
     Get the Windows AutoPilot device information and upload it to Azure storage.
 .DESCRIPTION
-    This script connects with Azure storage and uses the NuGet script for collecting Windows AutoPilot device information.
+    This script connects with Azure storage and uses the available script, from the PowerShell Gallery, for collecting Windows AutoPilot device information.
     The collected information will be uploaded to Azure storage and the script will clean up anything that was saved locally.
     Before using this script make sure to set the values for <StorageAccountKey>, <StorageAccountName> and <ShareName>.
     This script is created for usage with Microsoft Intune, which doesn't support parameters yet.
@@ -27,47 +27,48 @@ $credential = New-Object System.Management.Automation.PSCredential -ArgumentList
 
 #Try to create a drive with the storage account
 Try {
-    New-PSDrive -Name Z -PSProvider FileSystem -Root "\\$storageAccountName.file.core.windows.net\$shareName" -Credential $credential
+    New-PSDrive -Name Z -PSProvider FileSystem -Root "\\$storageAccountName.file.core.windows.net\$shareName" -Credential $credential -ErrorAction Stop
 }
 #Catch any error and exit the script
 Catch {
-    Throw "Failed to connect to Azure storage"
-    Exit
+    Write-Output "FAILED to connect to Azure storage"
+    Exit 
 }
 
-#Try to save the NuGet script
+#Try to save the script from the PowerShell Gallery
 Try {
     Save-Script Get-WindowsAutopilotInfo -Path $workingDirectory
 }
 #Catch any error and exit the script
 Catch {
-    Throw "Failed to save the script"
+    Write-Output "FAILED to save the script"
     Exit
 }
 
 #Set the location to the path of the saved script
 Set-Location -Path $workingDirectory
 
-#Try to install the NuGet script
+#Try to install the downloaded script
 Try {
     Install-Script -Name Get-WindowsAutoPilotInfo -Force
 }
 #Catch any error and exit the script
 Catch {
-    Throw "Failed to install the script"
+    Write-Output "FAILED to install the script"
     Exit
 }
 
-#Try to run the script and save the output to the Azure storage
+#Try to run the installed script and save the output to the Azure storage
 Try {
     Get-WindowsAutoPilotInfo.ps1 -OutputFile Z:\$fileName
 }
 #Catch any error and exit the script
 Catch {
-    Throw "Failed to get Windows AutoPilot information"
+    Write-Output "FAILED to get Windows AutoPilot information"
 }
 
 #Remove the downloaded script
 Remove-Item -Path $workingDirectory\Get-WindowsAutoPilotInfo.ps1
-#emove the created drive
+
+#Remove the created drive
 Remove-PSDrive Z
